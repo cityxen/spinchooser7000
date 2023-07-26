@@ -1,6 +1,5 @@
 //////////////////////////////////////////////////////////////////////////////////////
-// SPIN CHOOSER 7K 
-// C64/128 Joystick routine
+// SPIN CHOOSER 7K for C64
 //////////////////////////////////////////////////////////////////////////////////////
 #import "../Commodore64_Programming/include/Constants.asm"
 #import "../Commodore64_Programming/include/DrawPetMateScreen.asm"
@@ -50,8 +49,10 @@ usend:
 .word 0  // empty link signals the end of the program
 * = $0830 "vars init"
 
-init:
 
+//////////////////////////////////////////////////////////////////
+// Initialization
+init:
 // reset user port values to output and zero
 lda #$ff
 sta USER_PORT_DATA_DIR
@@ -60,135 +61,48 @@ sta flash_value
 lda #FLASH_TIMER_SPEED_CONST
 sta flash_timer_speed
 sta USER_PORT_DATA
-
 DrawPetMateScreen(screen_001)
+// TODO: set up sound
 
+//////////////////////////////////////////////////////////////////
+// Main loop
 main:
 
-lda JOYSTICK_PORT_1 // read joystick port 1
-and #16
-
-lda JOYSTICK_PORT_2 // read joystick port 2
-and #$10
-bne !jp2+
-// fire button hit
- 
+///////////////////////////////////
+// enter button selection mode by hitting F1
+jsr KERNAL_GETIN
+cmp #KEY_F1
+bne !ml+
 jsr select_buttons
 jmp main
 
-!jp2:
+!ml:
+
+///////////////////////////////////
+// determine if wheel is spinning or not
+lda pointer_current
+cmp #pointer_old
+beq main // wheel not spinning
+
+///////////////////////////////////
+// If FIRE (J2) then play sound
+lda JOYSTICK_PORT_2
+and #%00010000
+bne !ml+
+jsr play_peghit
+jmp main
+
+!ml:
 lda JOYSTICK_PORT_2 // read joystick port 2
 and #$0f
 
-bne !jp2+
-
-// 00
-
-!jp2:
-cmp #$01
-bne !jp2+
-
-// 01
-
-!jp2:
-cmp #$02
-bne !jp2+
-
-// 02
-
-!jp2:
-cmp #$03
-bne !jp2+
-
-// 03
-
-!jp2:
-cmp #$04
-bne !jp2+
-
-// 04
-
-!jp2:
-cmp #$05
-bne !jp2+
-
-// 05
-
-!jp2:
-cmp #$06
-bne !jp2+
-
-// 06
-
-!jp2:
-cmp #$07
-bne !jp2+
-
-// 07
-
-!jp2:
-cmp #$08
-bne !jp2+
-
-// 08
-
-!jp2:
-cmp #$09
-bne !jp2+
-
-// 09
-
-!jp2:
-cmp #$0a
-bne !jp2+
-
-// 10
-
-!jp2:
-cmp #$0b
-bne !jp2+
-
-// 11
-
-!jp2:
-cmp #$0c
-bne !jp2+
-
-// 12
-
-!jp2:
-cmp #$0d
-bne !jp2+
-
-// 13
-
-!jp2:
-cmp #$0e
-bne !jp2+
-
-// 14
-
-!jp2:
-cmp #$0f
-bne !jp2+
-
-// 15
-
-!jp2:
-
-
-
 jmp main
 
-
+//////////////////////////////////////////////////////////////////
+// FLASH THE BUTTONS, CHECK FOR BUTTON SELECTION
 select_buttons:
-
 DrawPetMateScreen(screen_002)
-
-
 select_buttons_loop:
-
-
 // increment flash timer for buttons
 inc flash_timer
 bne !sbl+
@@ -196,30 +110,22 @@ inc flash_timer2
 lda flash_timer2
 cmp flash_timer_speed
 bne !sbl+
-
 // check flash timer for flash increment
 lda #$00
 sta flash_timer
 sta flash_timer2
-
 inc flash_value_count
 lda flash_value_count
 and #$01
 tax
 lda flash_value_1,x
 sta USER_PORT_DATA
-// sta $040f // debug
-
 !sbl:
 // check joystick port 1 values
-
 lda JOYSTICK_PORT_1
-// pha
-// PrintHex(1,1)
-// pla
 cmp #$ff
-beq select_buttons_loop
 
+beq select_buttons_loop
 cmp #BUTTON_BLUE
 bne !chk_buttons+
 lda #BUTTON_LIGHT_BLUE
@@ -259,21 +165,38 @@ jmp exit_select_button
 exit_select_button:
 rts
 
-arrow_slice:
-.byte 0
+//////////////////////////////////////////////////////////////////
+// peghit sound
 
+play_peghit:
 
-up:     .byte 0
-down:   .byte 0
-left:   .byte 0
-right:  .byte 0
-button: .byte 0
+rts
 
-up2:     .byte 0
-down2:   .byte 0
-left2:   .byte 0
-right2:  .byte 0
-button2: .byte 0
+//////////////////////////////////////////////////////////////////
+// VARS
+
+pointer_current:        .byte 0
+pointer_old:            .byte 0
+wheel_spinning:         .byte 0
+wheel_spinning_timeout: .byte 0
+up:                     .byte 0
+down:                   .byte 0
+left:                   .byte 0
+right:                  .byte 0
+button:                 .byte 0
+up2:                    .byte 0
+down2:                  .byte 0
+left2:                  .byte 0
+right2:                 .byte 0
+button2:                .byte 0
+flash_timer:            .byte 0
+flash_timer2:           .byte 0
+flash_timer3:           .byte 0
+flash_timer_speed:      .byte FLASH_TIMER_SPEED_CONST
+flash_value:            .byte 0
+flash_value_count:      .byte 0
+flash_value_1:          .byte %010101010
+flash_value_2:          .byte %101010101
 
 page_table:
 .text "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -281,24 +204,5 @@ page_table:
 question_table:
 .text "1234567890"
 .byte 0
-
-flash_timer:
-.byte 0
-flash_timer2:
-.byte 0
-flash_timer3:
-.byte 0
-flash_timer_speed:
-.byte FLASH_TIMER_SPEED_CONST
-flash_value:
-.byte 0
-flash_value_count:
-.byte 0
-flash_value_1:
-.byte %010101010
-flash_value_2:
-.byte %101010101
-
-
 
 #import "../Commodore64_Programming/include/PrintSubRoutines.asm"
