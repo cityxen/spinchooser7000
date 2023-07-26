@@ -56,7 +56,7 @@ init:
 // reset user port values to output and zero
 lda #$ff
 sta USER_PORT_DATA_DIR
-lda #$00
+lda #BUTTON_LIGHT_NONE
 sta flash_value
 lda #FLASH_TIMER_SPEED_CONST
 sta flash_timer_speed
